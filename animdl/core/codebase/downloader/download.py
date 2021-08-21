@@ -1,7 +1,7 @@
 import re
 import time
 
-import requests
+import httpx
 from tqdm import tqdm
 
 from ...config import AUTO_RETRY, QUALITY
@@ -32,12 +32,11 @@ def absolute_extension_determination(url):
 def single_threaded_download(url, _path, tqdm_bar_init, headers):
     logger = logging.getLogger("Download @ ".format(_path.stem))
 
-    session = requests.Session()
+    session = httpx.Client()
     verify = headers.pop('ssl_verification', True)
     response_headers = session.head(
         url,
         allow_redirects=True,
-        verify=verify,
         headers=headers)
     content_length = int(response_headers.headers.get('content-length') or 0)
     tqdm_bar = tqdm_bar_init(content_length)
@@ -47,18 +46,13 @@ def single_threaded_download(url, _path, tqdm_bar_init, headers):
         tqdm_bar.update(d)
         while content_length > d:
             try:
-                for chunks in session.get(url,
-                                          allow_redirects=True,
-                                          stream=True,
-                                          headers={'Range': 'bytes=%d-' % d,
-                                                   **(headers or {})},
-                                          verify=verify,
-                                          timeout=3).iter_content(0x4000):
-                    size = len(chunks)
-                    d += size
-                    tqdm_bar.update(size)
-                    sw.write(chunks)
-            except requests.RequestException as e:
+                with session.stream('GET', url, allow_redirects=True, headers={'Range': 'bytes=%d-' % d, **(headers or {})}, timeout=3) as content_stream:
+                    for chunks in content_stream.iter_bytes():
+                        size = len(chunks)
+                        d += size
+                        tqdm_bar.update(size)
+                        sw.write(chunks)
+            except httpx.HTTPError as e:
                 """
                 A delay to avoid rate-limit(s).
                 """
@@ -75,7 +69,7 @@ def hls_download(
         _tqdm=True,
         preferred_quality=QUALITY):
 
-    session = requests.Session()
+    session = httpx.Client()
     _tqdm_bar = None
 
     with open(_path, 'ab') as sw:

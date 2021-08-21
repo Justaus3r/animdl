@@ -14,9 +14,9 @@ setup(
     install_requires=[
         'click',
         'comtypes',
+        'httpx',
         'lxml',
         'tqdm',
-        'requests',
         'pycryptodomex',
     ],
     entry_points='''
