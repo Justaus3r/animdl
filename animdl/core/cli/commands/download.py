@@ -5,7 +5,7 @@ from pathlib import Path
 import click
 from tqdm import tqdm
 
-from ...codebase import (Associator, aed, get_filler_list, hls_download,
+from ...codebase import (Associator, get_filler_list, hls_download,
                          sanitize_filename, url_download)
 from ...config import QUALITY, SESSION_FILE
 from ..helpers import *
@@ -93,12 +93,13 @@ def animdl_download(
     end = end or float('inf')
 
     session = client
+    logger = logging.getLogger('animdl-downloader-core')
 
     anime, provider = process_query(
-        session, query, auto=auto, auto_index=index)
+        session, query, logger, auto=auto, auto_index=index)
     if not anime:
         return
-    logger = logging.getLogger('animdl-%s-downloader-core' % provider)
+    logger.name = "animdl-{}-downloader-core".format(provider)
     content_name = title or anime.get('name')
     if not content_name:
         content_name = choice(create_random_titles())
@@ -183,7 +184,7 @@ def animdl_download(
                 content_title)
             continue
 
-        available_qualities = [*filter_quality(stream_urls, quality, download=True)]
+        available_qualities = [*filter_quality(stream_urls, quality, download=True)] or [*filter_urls(stream_urls, download=True)]
         if not available_qualities:
             content = stream_urls[0]
             q = content.get('quality')
@@ -200,7 +201,7 @@ def animdl_download(
                 "Fell back to quality '{}' due to unavailability of '{}'.".format(
                     q, quality))
 
-        extension = aed(content.get('stream_url'))
+        extension = get_extension(content.get('stream_url'))
         if extension in ['php', 'html']:
             extension = 'mp4'
         file_path = Path(
