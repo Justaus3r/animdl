@@ -116,6 +116,8 @@ Commands:
 
 **Downloading** is the same as the examples 1-4, except the `download` command is used.
 
+Downloading will take place in the working directory of this project!
+
 ### Supported Sites
 
 <!--Working: https://i.imgur.com/tG9nb8s.png, !Working: https://i.imgur.com/bTLO7LJ.png !-->
@@ -142,20 +144,19 @@ Currently, there are no plans to add more sites as **AnimDL** supports top sites
 
 Streaming will require either `mpv` or `vlc`. You will require these to be in your `PATH`, if not, simply make a `animdl_config.json` on the working directory and add these configurations appropriately:
 
-```json
-{
-    "players": {
-            "vlc": {
-                "executable": "<path-to-vlc>",
-            },
-            "mpv": {
-                "executable": "<path-to-mpv>",
-                "opts": [],
-        },   
-    }
-}
-```
+```yaml
+
+players:
+    mpv:
+        executable: "mpv"
+        opts: []
+    vlc:
+        executable: "vlc"
+        opts: []
+
+```    
+
 
 ### Disclaimer
 
-Downloading or streaming copyrighted materials might be illegal in your country.
+The disclaimer of this project can be found [here.](./disclaimer.md)

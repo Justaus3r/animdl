@@ -16,6 +16,7 @@ setup(
         'comtypes',
         'cssselect',
         'httpx',
+        'pyyaml',
         'yarl',
         'lxml',
         'tqdm',

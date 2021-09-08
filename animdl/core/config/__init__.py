@@ -1,4 +1,4 @@
-import json
+import yaml
 import os
 from pathlib import Path
 
@@ -14,13 +14,14 @@ def merge_dicts(dict1, dict2):
 
 
 CONFIGURATION_FILE_PATH = Path(
-    os.getenv('ANIMDL_CONFIG') or './animdl_config.json')
+    os.getenv('ANIMDL_CONFIG') or './animdl_config.yml')
 
 DEFAULT_CONFIG = {
     'session_file': 'cli_session_animdl.json',
     'default_provider': 'animixplay',
     'site_urls': {
         '9anime': 'https://9anime.to/',
+        'animekaizoku': 'https://animekaizoku.com/',
         'animeout': 'https://animeout.xyz/',
         'animepahe': 'https://animepahe.com/',
         'animixplay': 'https://animixplay.to/',
@@ -54,11 +55,12 @@ CONFIG = DEFAULT_CONFIG
 
 if CONFIGURATION_FILE_PATH.exists():
     with open(CONFIGURATION_FILE_PATH, 'r') as conf:
-        CONFIG = merge_dicts(DEFAULT_CONFIG, json.load(conf))
+        CONFIG = merge_dicts(DEFAULT_CONFIG, yaml.load(conf))
 
 SITE_URLS = CONFIG.get('site_urls', {})
 
 NINEANIME = SITE_URLS.get('9anime')
+ANIMEKAIZOKU = SITE_URLS.get('animekaizoku')
 ANIMEOUT = SITE_URLS.get('animeout')
 ANIMEPAHE = SITE_URLS.get('animepahe')
 ANIMIXPLAY = SITE_URLS.get('animixplay')
