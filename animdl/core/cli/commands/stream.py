@@ -1,74 +1,39 @@
 import logging
+from collections import defaultdict
 
 import click
 
-from ...codebase import Associator, get_filler_list
-from ...config import DEFAULT_PLAYER, SESSION_FILE
-from ..helpers import *
-from ..http_client import client
+from ...codebase import Associator
+from ...config import DEFAULT_PLAYER
+from .. import exit_codes, helpers, http_client
 
 
-def quality_prompt(logger, stream_list, provider):
+def quality_prompt(log_level, logger, stream_list):
+    title_dict = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+
     for n, anime in enumerate(stream_list, 1):
+        title_dict[anime.get('title') or 'Uncategorized'][anime.get('quality') or 'No specific quality mentioned']['Soft subtitles (Subtitles are not forced.)' if anime.get('subtitle') else 'Hard subtitles (Subtitles are forced.)'].append("{:02d}: {}".format(n, helpers.stream_judiciary(anime.get('stream_url'))))
 
-        inital = stream_judiciary(anime.get('stream_url'))
-        if anime.get('quality'):
-            inital += " [{0[quality]}]".format(anime)
+    for category, qualities in title_dict.items():
+        logger.info("\x1b[91m▽ {}\x1b[39m".format(category))
+        for quality, subtitles in qualities.items():
+            logger.info("\x1b[96m▽▽ {}\x1b[39m".format(quality))
+            for subtitle, animes in subtitles.items():
+                logger.info("\x1b[95m▽▽▽ {}\x1b[39m".format(subtitle))
+                for anime in animes:
+                    logger.info(anime)
 
-        if anime.get('subtitle'):
-            inital += " [CC (Soft-Subbed)]"
-
-        logger.info("{:02d}: {}".format(n, inital))
-
-    index = click.prompt(
-        "[\x1b[33m%s\x1b[39m] Select by the index (defaults to 1)" %
-        ('animdl-%s-streamer-core' %
-         provider), default=1, type=int, show_default=False) - 1
-
-    if (index + 1) > len(stream_list):
-        logger.debug("Applying modulus to get a valid index from incorrect index: #%02d -> #%02d" %
-                     (index + 1, index % len(stream_list) + 1))
-        index %= len(stream_list)
-
-    return stream_list[index]
+    return stream_list[(helpers.ask(log_level, text="Select above, using the stream index", show_default=True, default=1, type=int) - 1) % len(stream_list)]
 
 
 @click.command(name='stream', help="Stream your favorite anime by query.")
 @click.argument('query', required=True)
-@click.option('-a', '--anonymous', is_flag=True, default=False,
-              help='Avoid writing session files for this session.')
-@click.option('-s',
-              '--start',
-              help="An integer that determines where to begin the streaming from.",
+@click.option('-r',
+              '--range',
+              help="Select ranges of anime.",
               required=False,
-              default=0,
-              show_default=False,
-              type=int)
-@click.option('-e',
-              '--end',
-              help="A integer that determines where to end the streaming at.",
-              required=False,
-              default=0,
-              show_default=False,
-              type=int)
-@click.option('-t',
-              '--title',
-              help="Optional title for the anime if the query is a direct URL.",
-              required=False,
-              default='',
-              show_default=False)
-@click.option('-fl',
-              '--filler-list',
-              help="Filler list associated with the content enqueued for the stream.",
-              required=False,
-              default='',
-              show_default=False)
-@click.option('-o',
-              '--offset',
-              help="Offset (If the E1 of your anime is marked as E27 on AnimeFillerList, this value should be 26s).",
-              required=False,
-              default=0,
-              show_default=False)
+              default=':',
+              type=str)
 @click.option('--player-opts',
               help='Arguments that are to be passed to the player call.',
               required=False)
@@ -76,12 +41,6 @@ def quality_prompt(logger, stream_list, provider):
               flag_value=True, help="Force mpv (defaults to True) for streaming.")
 @click.option('--vlc', is_flag=True, default=DEFAULT_PLAYER ==
               'vlc', flag_value=True, help="Force vlc for streaming.")
-@click.option('--filler', is_flag=True, default=True,
-              help="Auto-skip fillers (If filler list is configured).")
-@click.option('--mixed', is_flag=True, default=True,
-              help="Auto-skip mixed fillers/canons (If filler list is configured).")
-@click.option('--canon', is_flag=True, default=True,
-              help="Auto-skip canons (If filler list is configured).")
 @click.option('--auto', is_flag=True, default=False,
               help="Select the first given index without asking for prompts.")
 @click.option('-i', '--index', required=False, default=0,
@@ -91,134 +50,74 @@ def quality_prompt(logger, stream_list, provider):
               help='Set the integer log level.',
               type=int,
               default=20)
-@bannerify
+@helpers.bannerify
 def animdl_stream(
         query,
-        anonymous,
-        start,
-        end,
-        title,
-        filler_list,
-        offset,
         player_opts,
         mpv,
         vlc,
-        filler,
-        mixed,
-        canon,
         auto,
         index,
-        log_level):
+        log_level,
+        **kwargs
+    ):
     """
     Streamer call for animdl streaming session.
     """
-    end = end or float('inf')
+    r = kwargs.get('range')
 
-    session = client
+    session = http_client.client
     logger = logging.getLogger('animdl-streamer-core')
-    streamer = handle_streamer(
-        click.parser.split_arg_string(
-            player_opts or '') or [], vlc=vlc, mpv=mpv)
-    if streamer == -107977:
-        return logger.critical(
-            'Streaming failed due to selection of a unsupported streamer; please configure the streamer in the config to use it.')
+    streamer = helpers.handle_streamer(click.parser.split_arg_string(player_opts or '') or [], vlc=vlc, mpv=mpv)
 
-    anime, provider = process_query(
-        session, query, logger, auto=auto, auto_index=index)
+    if streamer is False:
+        logger.critical('Streaming failed due to selection of a unsupported streamer; please configure the streamer in the config to use it.')
+        raise SystemExit(exit_codes.STREAMER_CONFIGURATION_REQUIRED)
+
+    anime, provider = helpers.process_query(session, query, logger, auto=auto, auto_index=index)
+
     if not anime:
-        return
-    logger.name = "animdl-%s-streamer-core" % provider
+        logger.critical('Searcher returned no anime to stream, failed to stream.')
+        raise SystemExit(exit_codes.NO_CONTENT_FOUND)
+    
+    logger.name = "animdl-{}-streamer-core".format(provider)
+    logger.debug("Will scrape from {}".format(anime))
     logger.info('Now initiating your stream session')
-    content_name = title or anime.get('name') or choice(create_random_titles())
-    logger.info("Starting stream session @ [%02d/?]" % start)
-    url = anime.get('anime_url')
-    anime_associator = Associator(url, session=session)
-    check = lambda *args, **kwargs: True
-    raw_episodes = []
 
-    if filler_list:
-        raw_episodes = get_filler_list(session, filler_list, fillers=True)
-        logger.debug(
-            "Succesfully loaded the filler list from '%s'." %
-            filler_list)
-        start += offset
-        check = (lambda x: raw_episodes[offset +
-                                        x -
-                                        1].content_type in ((['Filler'] if filler else []) +
-                                                            (['Mixed Canon/Filler'] if mixed else []) +
-                                                            (['Anime Canon', 'Manga Canon'] if canon else [])))
+    anime_associator = Associator(anime.get('anime_url'), session=session)
 
-    if not anonymous:
-        sessions.save_session(
-            SESSION_FILE,
-            url,
-            start,
-            content_name,
-            filler_list,
-            offset,
-            filler,
-            mixed,
-            canon)
+    streams = [*anime_associator.raw_fetch_using_check(helpers.get_check(r))]
+    total = len(streams)
 
-    streams = [
-        *
-        anime_associator.raw_fetch_using_check(
-            lambda x: check(x) and end >= x >= (
-                start if start >= 0 else 0))]
-    if start < 0:
-        start += len(streams) + 1
-        streams = [(_, __) for _, __ in streams if __ >= start]
-
-    for stream_urls_caller, c in streams:
-        if not anonymous:
-            sessions.save_session(
-                SESSION_FILE,
-                url,
-                c,
-                content_name,
-                filler_list,
-                offset,
-                filler,
-                mixed,
-                canon)
+    for count, stream_data in enumerate(streams, 1):
+        
+        stream_urls_caller, episode_number = stream_data
         playing = True
         while playing:
-            title = "Episode %02d" % c
-            if raw_episodes:
-                title += ": %s" % raw_episodes[c - 1].title
+
+            window_title = "Episode {:02d}".format(episode_number)
 
             stream_urls = stream_urls_caller()
 
             if not stream_urls:
-                playing = not click.confirm(
-                    "[\x1b[33m%s\x1b[39m] Could not find any streams for %s; continue? " %
-                    ('animdl-%s-streamer-core' %
-                     provider, title))
+                logger.warning("There were no stream links available at the moment. Ignoring {!r}, retry using a different provider.".format(window_title))
+                playing = False
                 continue
 
-            selection = quality_prompt(logger, stream_urls, provider) if len(
-                stream_urls) > 1 else stream_urls[0]
+            selection = quality_prompt(log_level, logger, stream_urls) if len(stream_urls) > 1 else stream_urls[0]
+            
+            logger.debug("Calling streamer for {!r}".format(stream_urls))
+            
             headers = selection.get('headers', {})
             _ = headers.pop('ssl_verification', True)
-            logger.info(
-                "Active stream session @ [%02d/%02d]" %
-                (c, len(streams)) if not raw_episodes else len(raw_episodes))
-
-            player_process = streamer(
-                selection.get('stream_url'),
-                headers=headers,
-                content_title=selection.get('title') or title,
-                subtitles=selection.get('subtitle', []))
+            
+            logger.info("Streaming {!r}, [{:d}/{:d}, {:d} remaining]".format(window_title, count, total, total - count))
+            
+            player_process = streamer(selection.get('stream_url'), headers=headers, content_title=selection.get('title') or window_title, subtitles=selection.get('subtitle', []))
             player_process.wait()
-            playing = False
 
             if player_process.returncode:
-                logger.warning(
-                    "Detected a non-zero return code. [%d]" %
-                    player_process.returncode)
-                logger.error(
-                    "If there was an error or a crash during playback. Don't sweat it, you're going to be prompted for this instance.")
-                playing = click.confirm(
-                    "[\x1b[33m%s\x1b[39m] Would you like to repeat '%s'? " %
-                    ('animdl-%s-streamer-core' %
-                     provider, title))
+                logger.warning("Detected a non-zero return code: {:d}.".format(player_process.returncode))
+                playing = False if log_level > 20 else click.confirm("Retry playback for {!r}?".format(window_title), show_default=True, default=False)
+
+            playing = False if log_level > 10 else click.confirm("Replay {!r}?".format(window_title), show_default=True, default=True)

@@ -6,6 +6,9 @@ from .inner import get_stream_url_from_kwik
 
 from functools import partial, lru_cache
 
+REGEX = construct_site_based_regex(ANIMEPAHE, extra_regex=r'/(?:anime|play)/([^?&/]+)')
+
+
 API_URL = ANIMEPAHE + "api"
 SITE_URL = ANIMEPAHE
 
@@ -78,9 +81,6 @@ def bypass_ddos_guard(session):
 
 
 def fetcher(session, url, check):
-
-    bypass_ddos_guard(session)
-
     match = PLAYER_RE.search(url)
     if match:
         url = "https://www.animepahe.com/anime/%s" % match.group(1)

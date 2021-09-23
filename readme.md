@@ -45,78 +45,72 @@ python -m pip install .
 - Doesn't make a single unnecessary request; the official site may make 1k requests, this tool makes 3~5.
 - Doesn't use any heavy dependencies such as Selenium or Javascript Evaluators.
 - Effectively bypasses DRMs in several streaming sites.
-- Integrates AnimeFillerList so that the user can filter out any fillers from downloading or streaming.
 - Integrates powerful, fast and efficient internal HLS downloader.
 - Only tool in existence to bypass [9Anime](https://9anime.to)'s cloudflare protection.
 - Operates with full efficiency and speed by using Python's generator functions to their full capacity.
 - Supports downloading with [Internet Download Manager](https://www.internetdownloadmanager.com/) optionally.
-- Supports streaming with [`mpv`](https://github.com/mpv-player/mpv/), an incredibly efficient, fast and light-weight dependency.
-- Supports streaming with [`vlc`](https://www.videolan.org/vlc/), which might require some configurations to make it work.
+- Supports optional downloading with `ffmpeg` (see [Using ffmpeg](#using-ffmpeg)).
+- Supports streaming with [`mpv`](https://github.com/mpv-player/mpv/) and [`vlc`](https://www.videolan.org/vlc/) (see [Streaming](#streaming))
 
 ### Usage
 
 ```
-animdl.py [OPTIONS] COMMAND [ARGS]...
+Usage: animdl [OPTIONS] COMMAND [ARGS]...
 
 Options:
-  --help  Show this message and exit.       
+  --help  Show this message and exit.
 
 Commands:
-  continue  Continue your downloads or stream from where t'was left.
   download  Download your favorite anime by query.
   grab      Stream the stream links to the stdout stream for external usage.
   schedule  Know which animes are going over the air when.
+  search    Search for an anime in the provider.
   stream    Stream your favorite anime by query.
+  test      Test the scrapability power.
 ```
 
 **Examples:**
 
-1. Streaming **One Piece** on [**9Anime**](https://9anime.to/) from episode 1 by placing a search forehand:
+Streaming **One Piece**'s episode 1 on [**AnimePahe**](https://animepahe.com/) by placing a search forehand:
 
 -
     ```
-    animdl.py stream "one piece" -s 1
+    animdl stream "one piece" -r 1
     ```
 
-
-2. Streaming **One Piece** on [**AnimeOut**](https://animeout.xyz/) from episode 1 by placing a search forehand.
-
--
-    ```
-    animdl.py stream "animeout:one piece" -s 1
-    ```
-
-3. Streaming **One Piece** on [**9Anime**](https://9anime.to/) with anime url from episode 1.
+Streaming **One Piece**'s episode 1 on [**AnimeOut**](https://animepahe.com/) by placing a search forehand:
 
 -
     ```
-    animdl.py stream "https://9anime.to/watch/one-piece.ov8" -s 1
+    animdl stream "animeout:one piece" -r 1
     ```
 
-4. Streaming with the setting of **3** with **AnimeFillerList** integration that filters out fillers.
+Streaming **One Piece**'s episode 1 on [**AnimeOut**](https://animepahe.com/) directly:
 
-- 
+-
     ```
-    animdl.py stream "https://9anime.to/watch/one-piece.ov8" -s 1 -fl "https://animefillerlist.com/shows/one-piece" --fillers
-    ```
-    
-5. Continuing a previous stream / download session without worrying about the command.
-
-- 
-    ```
-    animdl.py continue
+    animdl stream "https://www.animeout.xyz/download-one-piece-episodes-latest/" -r 1
     ```
 
-6. Scraping the episode stream links of **One Piece** from **[9Anime](https://9anime.to/)** to **stdout** without downloading:
 
-- 
-    ```
-    animdl.py grab "https://9anime.to/watch/one-piece.ov8" -s 1
-    ```
-
-**Downloading** is the same as the examples 1-4, except the `download` command is used.
+**Downloading** and **grabbing** is the same as the examples, except the `download` and the `grab` command should be used.
 
 Downloading will take place in the working directory of this project!
+
+
+### Range / `-r` option
+
+`-r` is a command created to select ranges.
+
+`1-10` will select from 1 to 10, `10-` will select everything after 10 and `-10` will select everything before 10.
+
+Instead of `-`, `:` and `.` will also work.
+
+**For example:**
+
+`20 12 10-3 40-50`
+
+will select episodes from 3 to 10 (inclusive), 12, 20 and from 40 to 50 (inclusive).
 
 ### Supported Sites
 
@@ -127,9 +121,10 @@ Downloading will take place in the working directory of this project!
 | [9Anime](https://9anime.to/) | `9anime` | 720p, 1080p | <p align="center"><code><img height="20" src="https://i.imgur.com/bTLO7LJ.png"></code></p> | <p align="center">3.27s</p>   | MP4 / TS  | 
 | [AnimePahe](https://www.animepahe.com/) | `animepahe` | 720p, 1080p | <p align="center"><code><img height="20" src="https://i.imgur.com/tG9nb8s.png"></code></p> | <p align="center">4.15s</p>  | MP4 | 
 | [AnimeOut](https://www.animeout.xyz/) | `animeout` | 720p, 1080p | <p align="center"><code><img height="20" src="https://i.imgur.com/tG9nb8s.png"></code></p> | <p align="center">0s</p>  | MKV | 
-| [Animixplay](https://www.animixplay.to/) | `animixplay` | 480p, 720p, 1080p | <p align="center"><code><img height="20" src="https://i.imgur.com/tG9nb8s.png"></code></p> | <p align="center">4.17s</p>  | MP4 / TS |
+| [Animixplay](https://www.animixplay.to/) | `animixplay` | 480p, 720p, 1080p | <p align="center"><code><img height="20" src="https://i.imgur.com/bTLO7LJ.png"></code></p> | <p align="center">4.17s</p>  | MP4 / TS |
 | [Animtime](https://animtime.com/) | No searcher included | 720p, 1080p | <p align="center"><code><img height="20" src="https://i.imgur.com/tG9nb8s.png"></code></p> | <p align="center">0s</p>  | MP4 |
 | [Crunchyroll](https://www.crunchyroll.com/) | `crunchyroll` | All | <p align="center"><code><img height="20" src="https://i.imgur.com/tG9nb8s.png"></code></p> | <p align="center">0s</p>  | TS |
+| [Kawaiifu](https://www.kawaiifu.com/) (NSFW) | `kawaiifu` | 720p, 1080p | <p align="center"><code><img height="20" src="https://i.imgur.com/tG9nb8s.png"></code></p> | <p align="center">0s</p>  | MP4 |
 | [GogoAnime](https://www.gogoanime.pe/) | `gogoanime` | 480p, 720p, 1080p | <p align="center"><code><img height="20" src="https://i.imgur.com/tG9nb8s.png"></code></p> | <p align="center">2.34s</p>   | MP4 / TS |
 | [Tenshi](https://www.tenshi.moe/) | `tenshi` | 720p, 1080p | <p align="center"><code><img height="20" src="https://i.imgur.com/tG9nb8s.png"></code></p> | <p align="center">0s</p> | MP4 |
 | [Twist](https://www.twist.moe/) | `twist` | 720p, 1080p | <p align="center"><code><img height="20" src="https://i.imgur.com/tG9nb8s.png"></code></p> | <p align="center">0s</p> | MP4 |
@@ -142,7 +137,7 @@ Currently, there are no plans to add more sites as **AnimDL** supports top sites
 
 ### Streaming
 
-Streaming will require either `mpv` or `vlc`. You will require these to be in your `PATH`, if not, simply make a `animdl_config.json` on the working directory and add these configurations appropriately:
+Streaming will require either `mpv` or `vlc`. You will require these to be in your `PATH`, if not, simply make a `animdl_config.yml` on the working directory and add these configurations appropriately:
 
 ```yaml
 
@@ -156,6 +151,23 @@ players:
 
 ```    
 
+### Using ffmpeg
+
+`ffmpeg` can be used with animdl using the config file.
+
+```yml
+
+use_ffmpeg: true
+
+```
+
+This config will make the downloader use ffmpeg for HLS streams.
+
+ffmpeg is set as optional because:
+
+- It is ridiculously slow, the internal HLS downloader has higher speeds.
+- It makes this project partially heavy-weighted.
+- `stderr` stream reading for cases such as `mpd` when using tqdm did not work.
 
 ### Disclaimer
 

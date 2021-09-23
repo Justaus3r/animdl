@@ -1,16 +1,19 @@
+from collections import defaultdict
 from functools import partial
 from urllib.parse import unquote
 
 import lxml.html as htmlparser
 
+from ....config import ANIMEOUT
+from ...helper import construct_site_based_regex
 from .inner.indexer import index_by_url
 
+REGEX = construct_site_based_regex(ANIMEOUT, extra_regex=r'/([^?&/]+)')
 
 def group_episodes(contents):
-    grouped = {}
+    grouped = defaultdict(list)
     for r in contents:
-        grouped.setdefault(r.get('episode', 0) or 0, [])
-        grouped.get(r.get('episode', 0) or 0, []).append(r)
+        grouped[r.get('episode') or 0].append(r)
     return grouped
 
 
