@@ -1,4 +1,4 @@
-import re
+import regex
 
 from click import prompt
 
@@ -21,7 +21,7 @@ def get_quality(the_dict):
     if isinstance(key, str) and key.isdigit():
         return int(key)
 
-    digits = re.search(key, r'[0-9]+')
+    digits = regex.search(key, r'[0-9]+')
     if digits:
         return int(digits.group(0))
     
@@ -35,12 +35,12 @@ def filter_urls(stream_urls, *, download=False):
 
 
 def filter_quality(stream_urls, preferred_quality, *, download=False):
-    for _, quality in filter_urls(stream_urls, download=False):
+    for _, quality in filter_urls(stream_urls, download=download):
         if preferred_quality >= quality:
             yield _, quality
 
 def get_range_conditions(range_string):
-    for matches in re.finditer(r"(?:([0-9]*)[:\-.]([0-9]*)|([0-9]+))", range_string):
+    for matches in regex.finditer(r"(?:([0-9]*)[:\-.]([0-9]*)|([0-9]+))", range_string):
         start, end, singular = matches.groups()
         if ((start or '').isdigit() and (end or '').isdigit()) and int(start) > int(end):
             start, end = end, start

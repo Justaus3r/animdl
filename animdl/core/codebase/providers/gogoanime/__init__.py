@@ -1,10 +1,12 @@
-import re
-from functools import partial
+import regex
+from functools import partial, reduce
 
 import lxml.html as htmlparser
 
 from ....config import GOGOANIME
 from ...helper import construct_site_based_regex
+
+from .inner.streamsb import extract
 
 REGEX = construct_site_based_regex(
     GOGOANIME, extra_regex=r'/(?:([^&?/]+)-episode-\d+|category/([^&?/]+))')
@@ -47,7 +49,7 @@ def convert_to_anime_page(url):
 
 
 def get_quality(url_text):
-    match = re.search(r'(\d+)P', url_text)
+    match = regex.search(r'(\d+)P', url_text)
     if not match:
         return None
     return int(match.group(1))
@@ -70,10 +72,14 @@ def get_stream_url(session, episode_page_url):
             'referer': "https:{}".format(streaming)})
     content = htmlparser.fromstring(response.text)
 
-    return [{'quality': get_quality(url.text_content()), 'stream_url': url.get('href'), 'headers': {'referer': str(response.url)}} for url in content.cssselect(
+    from_download_urls = [{'quality': get_quality(url.text_content()), 'stream_url': url.get('href'), 'headers': {'referer': str(response.url)}} for url in content.cssselect(
         '.dowload > a[download]'
     )]
+    
+    return from_download_urls or \
+        reduce(lambda x, y: x+y, ([*extract(session, streamsb_uri.get('href'))] for streamsb_uri in content.cssselect('a[href*="sbplay.org"]')), [])
 
+    
 
 def fetcher(session, url, check):
     url = convert_to_anime_page(url)

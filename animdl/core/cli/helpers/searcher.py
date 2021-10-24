@@ -3,7 +3,6 @@ All the search algorithms for all the providers available in AnimDL.
 """
 
 import json
-import re
 
 import lxml.html as htmlparser
 
@@ -29,23 +28,15 @@ TENSHI_URL_SEARCH_POST = TENSHI + "anime/search"
 TWIST_URL_CONTENT_API = "https://api.twist.moe/api/anime"
 TWIST_URL_CONTENT = TWIST + "a/"
 
-WAF_TOKEN = re.compile(r"(\d{64})")
-WAF_SEPARATOR = re.compile(r"\w{2}")
-
+def placeholder(session, query):
+    yield from []
 
 def search_9anime(session, query):
-    cloudflare_page = session.get(NINEANIME)
-    waf_token = ''.join(chr(int(c, 16)) for c in WAF_SEPARATOR.findall(
-                WAF_TOKEN.search(cloudflare_page.text).group(1)))
-
     nineanime_results = session.get(
         NINEANIME_URL_SEARCH,
         params={
-            'keyword': query},
-        headers={
-            'cookie': 'waf_cv=%s' % waf_token})
+            'keyword': query})
     parsed = htmlparser.fromstring(nineanime_results.text)
-
     for results in parsed.xpath(
             '//ul[@class="anime-list"]/li/a[@class="name"]'):
         yield {'anime_url': NINEANIME.rstrip('/') + results.get('href'), 'name': results.text_content()}
@@ -60,13 +51,7 @@ def search_animekaizoku(session, query):
 
 
 def search_animepahe(session, query):
-    def bypass_ddos_guard(session):
-        js_bypass_uri = re.search(
-            r"'(.*?)'",
-            session.get('https://check.ddos-guard.net/check.js').text).group(1)
-        session.cookies.update(session.get(ANIMEPAHE + js_bypass_uri).cookies)
-
-    bypass_ddos_guard(session)
+    
     animepahe_results = session.get(
         ANIMEPAHE_URL_SEARCH_AJAX, params={
             'q': query, 'm': 'search'})
@@ -86,12 +71,12 @@ def search_animeout(session, query):
 
 def search_animixplay(session, query):
     parsed = htmlparser.fromstring(
-        session.get(
-            GOGOANIME_URL_SEARCH, params={
-                'keyword': query}).text)
+        session.post(
+            'https://cachecow.eu/api/search', data={
+                'qfast': query}).json().get('result') or "<div></div>")
 
-    for results in parsed.xpath('//p[@class="name"]/a'):
-        yield {'anime_url': ANIMIXPLAY + "v1" + results.get('href')[9:], 'name': results.get('title')}
+    for results in parsed.cssselect('.name > a'):
+        yield {'anime_url': ANIMIXPLAY[:-1] + results.get('href'), 'name': results.get('title')}
 
 
 def search_gogoanime(session, query):
