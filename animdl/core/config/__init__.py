@@ -12,24 +12,37 @@ def merge_dicts(dict1, dict2):
                 dict2[k] = v
     return dict2
 
+def get_existent_path(*paths):
+    for path in paths:
+        path_object = Path(path)
+        if path_object.exists():
+            return path_object
 
-CONFIGURATION_FILE_PATH = Path(
-    os.getenv('ANIMDL_CONFIG') or './animdl_config.yml')
+USERPROFILE_ANIMDL_PATH = os.getenv('userprofile', ".") + "/.animdl/config.yml"
+
+CONFIGURATION_FILE_PATH = get_existent_path(
+    os.getenv('ANIMDL_CONFIG', './animdl_config.yml'),  
+    '/animdl_config.yml',
+    USERPROFILE_ANIMDL_PATH
+)
 
 DEFAULT_CONFIG = {
     'session_file': 'cli_session_animdl.json',
     'default_provider': 'animepahe',
     'site_urls': {
         '9anime': 'https://9anime.to/',
+        'allanime': 'https://allanime.site/',
         'animekaizoku': 'https://animekaizoku.com/',
         'animeout': 'https://animeout.xyz/',
         'animepahe': 'https://animepahe.com/',
+        'animexin': 'https://animexin.xyz/',
         'animixplay': 'https://animixplay.to/',
         'animtime': 'https://animtime.com/',
         'crunchyroll': 'http://www.crunchyroll.com/',
         'kawaiifu': 'https://kawaiifu.com/',
-        'gogoanime': 'https://gogoanime.pe/',
+        'gogoanime': 'https://gogoanime.cm/',
         'tenshi': 'https://tenshi.moe/',
+        'nyaasi': 'https://nyaa.si/',
         'twist': 'https://twist.moe/',
     },
     'preferred_quality': 1080,
@@ -47,7 +60,13 @@ DEFAULT_CONFIG = {
             'executable': 'iina-cli',
             'opts': [],
         },
-
+    },
+    'qbittorrent': {
+        'endpoint_url': "http://127.0.0.1:8080",
+        'credentials': {
+            'username': "admin",
+            'password': "youshallnotpass",
+        },
     },
     'schedule': {
         'site_url': 'https://graphql.anilist.co/',
@@ -60,21 +79,24 @@ DEFAULT_CONFIG = {
 
 CONFIG = DEFAULT_CONFIG
 
-if CONFIGURATION_FILE_PATH.exists():
+if CONFIGURATION_FILE_PATH is not None:
     with open(CONFIGURATION_FILE_PATH, 'r') as conf:
-        CONFIG = merge_dicts(DEFAULT_CONFIG, yaml.load(conf))
+        CONFIG = merge_dicts(DEFAULT_CONFIG, yaml.load(conf, Loader=yaml.SafeLoader))
 
 SITE_URLS = CONFIG.get('site_urls', {})
 
 NINEANIME = SITE_URLS.get('9anime')
+ALLANIME = SITE_URLS.get('allanime')
 ANIMEKAIZOKU = SITE_URLS.get('animekaizoku')
 ANIMEOUT = SITE_URLS.get('animeout')
 ANIMEPAHE = SITE_URLS.get('animepahe')
+ANIMEXIN = SITE_URLS.get('animexin')
 ANIMIXPLAY = SITE_URLS.get('animixplay')
 ANIMTIME = SITE_URLS.get('animtime')
 CRUNCHYROLL = SITE_URLS.get('crunchyroll')
 KAWAIIFU = SITE_URLS.get('kawaiifu')
 GOGOANIME = SITE_URLS.get('gogoanime')
+NYAASI = SITE_URLS.get('nyaasi')
 TENSHI = SITE_URLS.get('tenshi')
 TWIST = SITE_URLS.get('twist')
 
@@ -93,3 +115,8 @@ DEFAULT_PROVIDER = CONFIG.get('default_provider')
 
 AUTO_RETRY = CONFIG.get('download_auto_retry', 300) / 1000
 USE_FFMPEG = CONFIG.get('use_ffmpeg', False)
+
+QBITTORENT_CONFIG = CONFIG.get('qbittorrent', {})
+
+QBITTORENT_ENDPOINT = QBITTORENT_CONFIG.get('endpoint_url')
+QBITTORENT_CREDENTIALS = QBITTORENT_CONFIG.get('credentials', {})

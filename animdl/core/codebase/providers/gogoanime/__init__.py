@@ -1,12 +1,10 @@
-import regex
-from functools import partial, reduce
+from functools import partial
 
 import lxml.html as htmlparser
+import regex
 
 from ....config import GOGOANIME
 from ...helper import construct_site_based_regex
-
-from .inner.streamsb import extract
 
 REGEX = construct_site_based_regex(
     GOGOANIME, extra_regex=r'/(?:([^&?/]+)-episode-\d+|category/([^&?/]+))')
@@ -16,7 +14,6 @@ ANIME_RE = construct_site_based_regex(
 
 EPISODE_LOAD_AJAX = "https://ajax.gogo-load.com/ajax/load-list-episode"
 SITE_URL = GOGOANIME
-
 
 def get_episode_list(session, anime_id):
     """
@@ -54,32 +51,10 @@ def get_quality(url_text):
         return None
     return int(match.group(1))
 
-
-def get_stream_url(session, episode_page_url):
-
-    response = session.get(episode_page_url)
+def get_embed_page(session, episode_url):
+    response = session.get(episode_url)
     content_parsed = htmlparser.fromstring(response.text)
-
-    streaming = content_parsed.cssselect(
-        'iframe')[0].get('src')
-
-    response = session.get(
-        'https:%s' %
-        streaming.replace(
-            'streaming.php',
-            'download'),
-        headers={
-            'referer': "https:{}".format(streaming)})
-    content = htmlparser.fromstring(response.text)
-
-    from_download_urls = [{'quality': get_quality(url.text_content()), 'stream_url': url.get('href'), 'headers': {'referer': str(response.url)}} for url in content.cssselect(
-        '.dowload > a[download]'
-    )]
-    
-    return from_download_urls or \
-        reduce(lambda x, y: x+y, ([*extract(session, streamsb_uri.get('href'))] for streamsb_uri in content.cssselect('a[href*="sbplay.org"]')), [])
-
-    
+    return "https:{}".format(content_parsed.cssselect('iframe')[0].get('src'))
 
 def fetcher(session, url, check):
     url = convert_to_anime_page(url)
@@ -91,4 +66,4 @@ def fetcher(session, url, check):
 
     for index, episode in enumerate(episodes, 1):
         if check(index):
-            yield partial(get_stream_url, session, episode), index
+            yield partial(lambda e: [{'stream_url': get_embed_page(session, e), 'further_extraction': ('gogoplay', {})}] , episode), index

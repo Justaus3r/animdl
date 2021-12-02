@@ -2,8 +2,8 @@ import logging
 
 import click
 
-from ...codebase import Associator
-from ..helpers import bannerify
+from ...codebase import providers
+from ..helpers import bannerify, ensure_extraction
 from ..http_client import client
 
 
@@ -18,21 +18,25 @@ from ..http_client import client
               default=1,
               required=False,
               type=int)
+@click.option('--log-file',
+            help='Set a log file to log everything to.',
+            required=False,)
 @click.option('-ll',
               '--log-level',
               help='Set the integer log level.',
               type=int,
               default=20)
 @bannerify
-def animdl_test(x, e, log_level):
+def animdl_test(x, e, **kwargs):
     session = client
     SITE_LIST = {
         '9anime': 'https://9anime.to/watch/one-piece.ov8',
         'crunchyroll': 'https://www.crunchyroll.com/one-piece',
+        'allanime': 'https://allanime.site/anime/ReooPAxPMsHM4KPMY',
         'animeout': 'https://www.animeout.xyz/download-one-piece-episodes-latest/',
         'animixplay': 'https://animixplay.to/v1/one-piece',
         'animtime': 'https://animtime.com/title/5',
-        'gogoanime': 'https://gogoanime.pe/category/one-piece',
+        'gogoanime': 'https://gogoanime.cm/category/one-piece',
         'tenshi': 'https://tenshi.moe/anime/kjfrhu3s',
         'twist': 'https://twist.moe/a/one-piece',
     }
@@ -40,18 +44,16 @@ def animdl_test(x, e, log_level):
     if not x:
         x = SITE_LIST.values()
 
-    logger = logging.getLogger('animdl-tests')
+    logger = logging.getLogger('tests')
 
     for site in x:
         logger.info("Attempting to scrape anime from {!r}.".format(site))
-        anime_associator = Associator(site, session=session)
-
         try:
-            links = [*anime_associator.raw_fetch_using_check(lambda r: r == e)]
+            links = [*providers.get_appropriate(session, site, lambda r: r == e)]
             if not links:
                 raise Exception('No stream urls found on {!r}.'.format(site))
             for link_cb, en in links:
-                for stream in link_cb():
+                for stream in ensure_extraction(session, link_cb):
                     print(
                         '\t - \x1b[32m{stream_url}\x1b[39m'.format_map(stream))
             logger.info(

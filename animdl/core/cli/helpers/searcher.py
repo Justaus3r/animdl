@@ -49,6 +49,13 @@ def search_animekaizoku(session, query):
     for results in animekaizoku_results.cssselect('.post-title'):
         yield {'anime_url': ANIMEKAIZOKU + results.cssselect('a')[0].get('href'), 'name': results.text_content()}
 
+def search_allanime(session, query):
+
+    gql_response = session.get(ALLANIME + 'graphql', params={'variables': '{"search":{"allowAdult":true,"query":"%s"},"translationType":"sub"}' % query.replace('"', '\\"'), 'extensions': '{"persistedQuery":{"version":1,"sha256Hash":"9343797cc3d9e3f444e2d3b7db9a84d759b816a4d84512ea72d079f85bb96e98"}}'})
+
+    for result in gql_response.json().get('data', {}).get('shows', {}).get('edges', []):
+        if any(a for k, a in result.get('availableEpisodes', {}).items()):
+            yield {'anime_url': ALLANIME + "anime/{[_id]}".format(result), 'name': result.get('name')}
 
 def search_animepahe(session, query):
     
@@ -111,7 +118,11 @@ def search_crunchyroll(session, query):
 
     for match, anime in search(query, content.get(
             'data', []), processor=lambda r: r.get('name')):
-        yield {'anime_url': CRUNCHYROLL + anime.get('link', '').strip('/'), 'name': anime.get('name', '')}
+        yield {'anime_url': anime.get('link', '').strip('/'), 'name': anime.get('name', '')}
+
+def search_nyaasi(session, query):
+    for anime in htmlparser.fromstring(session.get(NYAASI, params={'q': query, 's': 'seeders', 'o': 'desc'}).text).cssselect('tr > td[colspan="2"] > a[title]:last-child	'):
+        yield {'anime_url': NYAASI + anime.get('href')[1:], 'name': anime.get('title', '').strip()}
 
 
 def search_tenshi(session, query):
@@ -138,6 +149,7 @@ def search_tenshi(session, query):
 link = {
     '9anime': search_9anime,
     'animekaizoku': search_animekaizoku,
+    'allanime': search_allanime,
     'animepahe': search_animepahe,
     'animeout': search_animeout,
     'animixplay': search_animixplay,
@@ -145,6 +157,7 @@ link = {
     'kawaiifu': search_kawaiifu,
     'gogoanime': search_gogoanime,
     'tenshi': search_tenshi,
+    'nyaa': search_nyaasi,
     'twist': search_twist,
 }
 

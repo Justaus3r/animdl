@@ -3,7 +3,7 @@ from collections import defaultdict
 
 import click
 
-from ...codebase import Associator
+from ...codebase import providers
 from ...config import DEFAULT_PLAYER
 from .. import exit_codes, helpers, http_client
 
@@ -48,6 +48,9 @@ def quality_prompt(log_level, logger, stream_list):
               help="Select the first given index without asking for prompts.")
 @click.option('-i', '--index', required=False, default=0,
               show_default=False, type=int, help="Index for the auto flag.")
+@click.option('--log-file',
+            help='Set a log file to log everything to.',
+            required=False,)
 @click.option('-ll',
               '--log-level',
               help='Set the integer log level.',
@@ -71,7 +74,7 @@ def animdl_stream(
     r = kwargs.get('range')
 
     session = http_client.client
-    logger = logging.getLogger('animdl-streamer-core')
+    logger = logging.getLogger('streamer')
     streamer = helpers.handle_streamer(click.parser.split_arg_string(
         player_opts or '') or [], vlc=vlc, mpv=mpv, iina=iina)
 
@@ -88,24 +91,23 @@ def animdl_stream(
             'Searcher returned no anime to stream, failed to stream.')
         raise SystemExit(exit_codes.NO_CONTENT_FOUND)
 
-    logger.name = "animdl-{}-streamer-core".format(provider)
+    logger.name = "{}/{}".format(provider, logger.name)
     logger.debug("Will scrape from {}".format(anime))
     logger.info('Now initiating your stream session')
 
-    anime_associator = Associator(anime.get('anime_url'), session=session)
+    enqueuer = providers.get_appropriate(session, anime.get('anime_url'), helpers.get_check(r))
 
-    streams = [*anime_associator.raw_fetch_using_check(helpers.get_check(r))]
+    streams = list(enqueuer)
     total = len(streams)
 
-    for count, stream_data in enumerate(streams, 1):
+    for count, (stream_urls_caller, episode_number) in enumerate(streams, 1):
 
-        stream_urls_caller, episode_number = stream_data
         playing = True
         while playing:
 
             window_title = "Episode {:02d}".format(episode_number)
 
-            stream_urls = stream_urls_caller()
+            stream_urls = list(helpers.ensure_extraction(session, stream_urls_caller))
 
             if not stream_urls:
                 logger.warning(
@@ -115,6 +117,10 @@ def animdl_stream(
 
             selection = quality_prompt(log_level, logger, stream_urls) if len(
                 stream_urls) > 1 else stream_urls[0]
+
+            if selection.pop('is_torrent', False):
+                logging.warning("Obtained torrent in streaming, please download the torrent and stream it. (Torrent downloads take place in sequential order.)")
+                continue
 
             logger.debug("Calling streamer for {!r}".format(stream_urls))
 

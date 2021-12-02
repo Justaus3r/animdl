@@ -3,7 +3,8 @@ import logging
 
 import click
 
-from ...codebase import Associator
+from ...codebase import providers
+from .. import helpers
 from ..helpers import *
 from ..http_client import client
 
@@ -28,6 +29,9 @@ from ..http_client import client
               help="Select the first given index without asking for prompts.")
 @click.option('-i', '--index', required=False, default=0,
               show_default=False, type=int, help="Index for the auto flag.")
+@click.option('--log-file',
+            help='Set a log file to log everything to.',
+            required=False,)
 @click.option('-ll',
               '--log-level',
               help='Set the integer log level.',
@@ -39,23 +43,24 @@ def animdl_grab(query, file, auto, index, log_level, **kwargs):
     r = kwargs.get('range')
 
     session = client
-    logger = logging.getLogger('animdl-grabber-core')
+    logger = logging.getLogger('grabber')
     anime, provider = process_query(
         session, query, logger, auto=auto, auto_index=index)
     if not anime:
         return
-    logger.name = "animdl-{}-grabber-core".format(provider)
-    anime_associator = Associator(anime.get('anime_url'), session=session)
+    logger.name = "{}/{}".format(provider, logger.name)
     logger.info("Initializing grabbing session.")
-    collected_streams = []
 
     if file:
+        collected_streams = []
         file += ".json" if not file.endswith('.json') else ''
 
-    for stream_url_caller, episode in anime_associator.raw_fetch_using_check(
-            check=get_check(r)):
-        stream_url = stream_url_caller()
-        collected_streams.append({'episode': episode, 'streams': stream_url})
+    for stream_url_caller, episode in providers.get_appropriate(session, anime.get('anime_url'), check=get_check(r)):
+        stream_url = list(helpers.ensure_extraction(session, stream_url_caller))
+        
+        if file:
+            collected_streams.append({'episode': episode, 'streams': stream_url})
+        
         if file:
             logger.info('{} => {!r}'.format('E%02d' % episode, file))
             try:
