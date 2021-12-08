@@ -1,6 +1,7 @@
-![AnimDL Cover](https://i.imgur.com/nNXSZi6.png)
+<!-- ![AnimDL Cover](https://i.imgur.com/nNXSZi6.png) !-->
 
-<h1><p align="center"> AnimDL - Download & Stream Your Favorite Anime </p>
+<p align="center"><img src="https://capsule-render.vercel.app/api?type=soft&fontColor=703ee5&text=justfoolingaround/animdl&height=150&fontSize=60&desc=Ridiculously%20efficient,%20fast%20and%20light-weight.&descAlignY=75&descAlign=60&color=00000000&animation=twinkling"></p>
+
 
 <p align="center"><a href="https://github.com/justfoolingaround/animdl"><img src="https://forthebadge.com/images/badges/makes-people-smile.svg" height="30px"><img src="https://forthebadge.com/images/badges/made-with-python.svg" height="30px"><img src="https://forthebadge.com/images/badges/powered-by-black-magic.svg" height="30px"></a></p>
 </h1>
@@ -124,7 +125,8 @@ will select episodes from 3 to 10 (inclusive), 12, 20 and from 40 to 50 (inclusi
 | [Crunchyroll](https://www.crunchyroll.com/)  | `crunchyroll`        | All                 | <p align="center"><code><img height="20" src="https://i.imgur.com/tG9nb8s.png"></code></p> | <p align="center">0s</p>               | TS                |
 | [Kawaiifu](https://www.kawaiifu.com/) (NSFW) | `kawaiifu`           | 720p, 1080p         | <p align="center"><code><img height="20" src="https://i.imgur.com/tG9nb8s.png"></code></p> | <p align="center">0s</p>               | MP4               |
 | [GogoAnime](https://www.gogoanime.pe/)       | `gogoanime`          | 480p, 720p, 1080p   | <p align="center"><code><img height="20" src="https://i.imgur.com/tG9nb8s.png"></code></p> | <p align="center">2.34s</p>            | MP4 / TS          |
-| [Nyaa](https://nyaa.si/)       | `nyaa`          | All   | <p align="center"><code><img height="20" src="https://i.imgur.com/tG9nb8s.png"></code></p> | <p align="center">0s</p>            | Torrent        |
+| [Nyaa](https://nyaa.si/)       | `nyaa`      | All   | <p align="center"><code><img height="20" src="https://i.imgur.com/tG9nb8s.png"></code></p> | <p align="center">0s</p>            | Torrent        |
+| [Haho](https://www.haho.moe/) (NSFW)         | `haho`           | 720p, 1080p         | <p align="center"><code><img height="20" src="https://i.imgur.com/tG9nb8s.png"></code></p> | <p align="center">0s</p>               | MP4               |
 | [Tenshi](https://www.tenshi.moe/)            | `tenshi`             | 720p, 1080p         | <p align="center"><code><img height="20" src="https://i.imgur.com/tG9nb8s.png"></code></p> | <p align="center">0s</p>               | MP4               |
 | [Twist](https://www.twist.moe/)              | `twist`              | 720p, 1080p         | <p align="center"><code><img height="20" src="https://i.imgur.com/tG9nb8s.png"></code></p> | <p align="center">0s</p>               | MP4               |
 
