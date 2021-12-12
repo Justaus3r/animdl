@@ -20,7 +20,7 @@ def inherit_stream_meta(parent, streams, *, exempt=['headers', 'stream_url']):
 
 def further_extraction(session, stream):
     extractor, options = stream.pop('further_extraction', (None, None))
-    
+
     if extractor:
         for ext_module, ext in extractors.iter_extractors():
             if ext == extractor:
@@ -28,8 +28,10 @@ def further_extraction(session, stream):
                     return functools.reduce(lambda x, y: x + y, list(further_extraction(session, inherited_stream) for inherited_stream in inherit_stream_meta(stream, ext_module.extract(session, stream.get('stream_url')), **options)), [])
                 except Exception as e:
                     fe_logger.error("Extraction from {!r} failed due to: {!r}.".format(ext, e))
-    
-    return [stream]
+    else:
+        return [stream]
+
+    return []
 
 def ensure_extraction(session, stream_uri_caller):
     for stream in stream_uri_caller():
@@ -60,7 +62,7 @@ def get_quality(the_dict):
 
 def filter_urls(stream_urls, *, download=False):
     for _ in sorted(stream_urls, reverse=True, key=get_quality):
-        if (download and  (_.get('download') or _.get('download') is None)):
+        if (download and (_.get('download') or _.get('download') is None)):
             yield _, get_quality(_) 
 
 
@@ -122,9 +124,9 @@ def download(session, logger, content_dir, outfile_name, stream_urls, quality, *
 
         content_url = download_data.get('stream_url')
         content_headers = download_data.get('headers')
-        
+
         try:
-            return True, downloader.handle_download(session, content_url, content_headers, content_dir, outfile_name if not download_data.get('is_torrent', False) else download_data.get('torrent_name'), preferred_quality=quality, **kwargs)
+            return True, downloader.handle_download(session, content_url, content_headers, content_dir, outfile_name if not download_data.get('is_torrent', False) else download_data.get('torrent_name'), preferred_quality=quality, subtitles=download_data.get('subtitle', []), **kwargs)
         except Exception as e:
             logger.critical("Oops, due to {!r}, this stream has been rendered unable to download.".format(e))
 
