@@ -9,7 +9,9 @@ from ...codebase import downloader, extractors
 from .fun import (bannerify, choice, create_random_titles, stream_judiciary,
                   to_stdout)
 from .player import *
+from .searcher import link as processor_link
 from .processors import get_searcher, process_query
+from .intelliq import filter_quality
 
 fe_logger = logging.getLogger("further-extraction")
 
@@ -41,36 +43,6 @@ def ensure_extraction(session, stream_uri_caller):
             yield stream
 
 
-def get_quality(the_dict):
-    key = the_dict.get('quality')
-
-    if not key:
-        return 0
-
-    if isinstance(key, int):
-        return key
-
-    if isinstance(key, str) and key.isdigit():
-        return int(key)
-
-    digits = regex.search(key, r'[0-9]+')
-    if digits:
-        return int(digits.group(0))
-    
-    return 0
-
-
-def filter_urls(stream_urls, *, download=False):
-    for _ in sorted(stream_urls, reverse=True, key=get_quality):
-        if (download and (_.get('download') or _.get('download') is None)):
-            yield _, get_quality(_) 
-
-
-def filter_quality(stream_urls, preferred_quality, *, download=False):
-    for _, quality in filter_urls(stream_urls, download=download):
-        if preferred_quality >= quality:
-            yield _, quality
-
 def get_range_conditions(range_string):
     for matches in regex.finditer(r"(?:([0-9]*)[:\-.]([0-9]*)|([0-9]+))", range_string):
         start, end, singular = matches.groups()
@@ -85,7 +57,7 @@ def get_check(range_string):
 
 def ask(log_level, **prompt_kwargs):
 
-    if log_level < 20:
+    if log_level > 20:
         return prompt_kwargs.get('default')
 
     return prompt(**prompt_kwargs)
@@ -94,24 +66,22 @@ DOWNLOAD_ERROR_MESSAGE = """
 \x1b[34mDownload failure #{0:02d}\x1b[39m
 
 Download Arguments: {1}
-Quality: {2}
 
-Raw exception: {3!r}
+Raw exception: {2!r}
 
-Complete traceback: {4}\
+Complete traceback: {3}\
 """
 
 
 def download(session, logger, content_dir, outfile_name, stream_urls, quality, **kwargs):
-    downloadable_content = [*filter_quality(stream_urls, quality, download=True)] or \
-        [*filter_urls(stream_urls, download=True)]
+    downloadable_content = filter_quality(stream_urls, quality)
 
     if not downloadable_content:
         return False, "No downloadable content found."
 
     errors = []
 
-    for (download_data, quality_) in iter(downloadable_content):
+    for download_data in iter(downloadable_content):
         if "further_extraction" in download_data:
             try:
                 further_status, further_yield = download(session, logger, content_dir, outfile_name, further_extraction(session, download_data), quality, **kwargs)
@@ -130,15 +100,14 @@ def download(session, logger, content_dir, outfile_name, stream_urls, quality, *
         except Exception as e:
             logger.critical("Oops, due to {!r}, this stream has been rendered unable to download.".format(e))
 
-            errors.append(((download_data, quality_), e, traceback.format_exc()))
+            errors.append((download_data, e, traceback.format_exc()))
         
     logger.critical("No downloads were done. Use log level DEBUG or, -ll 0 to get complete tracebacks for the failed downloads.")
 
-    for count, ((download_data, quality_), exception, tb) in enumerate(errors, 1):
+    for count, (download_data, exception, tb) in enumerate(errors, 1):
         logger.debug(DOWNLOAD_ERROR_MESSAGE.format(
             count,
             download_data,
-            quality_,
             exception,
             tb
         ))

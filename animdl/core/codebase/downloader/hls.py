@@ -6,17 +6,18 @@ import httpx
 import yarl
 from Cryptodome.Cipher import AES
 
+from ...cli.helpers import intelliq
 
 ENCRYPTION_DETECTION_REGEX = regex.compile(r"#EXT-X-KEY:METHOD=([^,]+),")
 ENCRYPTION_URL_IV_REGEX = regex.compile(
-    r"#EXT-X-KEY:METHOD=(?P<method>[^,]+),URI=\"(?P<key_uri>[^\"]+)\"(?:,IV=(?P<iv>.*))?")
+    r'#EXT-X-KEY:METHOD=(?P<method>[^,]+),URI="(?P<key_uri>.+?)"(?:,IV=(?P<iv>.*))?')
 
 
 STREAM_INFO_REGEX = regex.compile(r"#EXT-X-STREAM-INF(:.*?)?\s+(.+)")
 QUALITY_REGEX = regex.compile(
     r'RESOLUTION=\d+x(\d+)')
 
-TS_EXTENSION_REGEX = regex.compile(r"(?P<ts_url>.*\.[a-zA-Z]+.*)")
+INTERNAL_STREAMS_REGEX = regex.compile(r"#EXTINF:.+?\s+(.+)")
 
 HLS_STREAM_EXTENSIONS = ['m3u8', 'm3u']
 
@@ -70,30 +71,13 @@ def m3u8_generation(session_init, m3u8_uri):
         yield {'quality': extract_resolution(stream_info), 'stream_url': content_uri}
 
 
-def sort_by_best(q_dicts, preferred_quality):
-    return (
-        sorted(
-            [
-             q for q in q_dicts if get_extension(
-                q.get('stream_url')) in [
-                    'm3u', 'm3u8'] and q.get(
-                        'quality', '0').isdigit() and int(
-                            q.get(
-                                'quality', 0)) <= preferred_quality], key=lambda q: int(
-                                    q.get(
-                                        'quality', 0)), reverse=True) or q_dicts)
-
-
-def resolve_stream(session, logger, q_dicts, preferred_quality):
-    for origin_m3u8 in sort_by_best(q_dicts, preferred_quality):
+def resolve_stream(session, logger, q_dicts, quality_string):
+    for origin_m3u8 in intelliq.filter_quality(q_dicts, quality_string):
         headers = origin_m3u8.get('headers', {})
-        for m3u8 in sort_by_best(m3u8_generation(lambda s: session.get(
-                str(s), headers=headers), origin_m3u8.get('stream_url')), preferred_quality):
-            if preferred_quality != int(m3u8.get('quality') or 0):
-                logger.warning('Could not find the quality {}, falling back to {}.'.format(
-                    preferred_quality, m3u8.get('quality') or "an unknown quality"))
-            content_response = session.get(
-                str(m3u8.get('stream_url')), headers=headers)
+        
+        m3u8s = list(m3u8_generation(lambda s: session.get(str(s), headers=headers), origin_m3u8.get('stream_url')))
+        for m3u8 in intelliq.filter_quality(m3u8s, quality_string):
+            content_response = session.get(str(m3u8.get('stream_url')), headers=headers)
             if content_response.status_code < 400:
                 return content_response, origin_m3u8
         content_response = session.get(
@@ -102,21 +86,18 @@ def resolve_stream(session, logger, q_dicts, preferred_quality):
             return content_response, origin_m3u8
 
 
-def hls_yield(session, q_dicts, preferred_quality,
+def hls_yield(session, q_dicts, quality_string,
               auto_retry=2, *, continuation_index=1):
-    """
-    >>> hls_yield(session, [{'stream_url': 'https://example.com/hls_stream.m3u8'}], 1080) # Generator[dict]
 
-    Returns
-    ------
-    A dictionary with 3 keys, `bytes`,
-    """
-    logger = logging.getLogger(
-        "{.__class__.__name__} @ 0x{:016X}".format(session, id(session)))
+    logger = logging.getLogger("hls/internal")
+    
     content_response, origin_m3u8 = resolve_stream(
-        session, logger, q_dicts, preferred_quality)
+        session, logger, q_dicts, quality_string)
+    
     m3u8_data = content_response.content.decode('utf-8', errors='ignore')
-    relative_url = yarl.URL(str(content_response.url).rstrip('/') + "/").parent
+    
+    base_uri = yarl.URL(str(content_response.url).rstrip('/') + "/").parent
+    
     encryption_uri, encryption_iv, encryption_data = None, None, b''
     encryption_state = not unencrypted(m3u8_data)
 
@@ -124,32 +105,39 @@ def hls_yield(session, q_dicts, preferred_quality,
         encryption_uri, encryption_iv = extract_encryption(m3u8_data)
         parsed_uri = yarl.URL(encryption_uri)
         if not parsed_uri.is_absolute():
-            parsed_uri = relative_url.join(parsed_uri)
+            parsed_uri = base_uri.join(parsed_uri)
         encryption_key_response = session.get(
-            str(parsed_uri), headers=origin_m3u8.get('headers', {}))
+            parsed_uri.human_repr(), headers=origin_m3u8.get('headers', {}))
         encryption_data = encryption_key_response.content
 
-    all_ts = TS_EXTENSION_REGEX.findall(m3u8_data)
-    default_iv_generator = def_iv(continuation_index)
+    internal_streams = INTERNAL_STREAMS_REGEX.findall(m3u8_data)
+    total_streams = len(internal_streams)
 
-    for c, ts_uris in enumerate(
-            all_ts[(continuation_index - 1):], continuation_index):
-        ts_uris = yarl.URL(ts_uris)
-        if not ts_uris.is_absolute():
-            ts_uris = relative_url.join(ts_uris)
+    stream_iter = iter((yarl.URL(_) for _ in internal_streams[continuation_index - 1:]))
+    decryptor = get_decrypter(encryption_data, iv=encryption_iv or b'', default_iv_generator=def_iv(continuation_index))
+
+    for current_count, stream in enumerate(stream_iter, continuation_index):
+        
+        if not stream.is_absolute():
+            stream = base_uri.join(stream)
+        
         sucessful_yield = False
+
         while not sucessful_yield:
             try:
                 ts_response = session.get(
-                    str(ts_uris), headers=origin_m3u8.get(
+                    stream.human_repr(), headers=origin_m3u8.get(
                         'headers', {}))
+                ts_response.raise_for_status()
                 ts_data = ts_response.content
+                
                 if encryption_state:
-                    ts_data = get_decrypter(
-                        encryption_data, iv=encryption_iv or b'', default_iv_generator=default_iv_generator)(ts_data)
-                yield {'bytes': ts_data, 'total': len(all_ts), 'current': c}
+                    ts_data = decryptor(ts_data)
+                
+                yield {'bytes': ts_data, 'total': total_streams, 'current': current_count}
+                
                 sucessful_yield = True
-            except httpx.HTTPError as e:
+            except httpx.RequestError as e:
                 logger.error(
                     'HLS downloading error due to "{!r}", retrying.'.format(e))
                 time.sleep(auto_retry)

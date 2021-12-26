@@ -48,7 +48,7 @@ DEFAULT_CONFIG = {
         'twist': 'https://twist.moe/',
         'zoro': 'https://zoro.to/',
     },
-    'preferred_quality': 1080,
+    'quality_string': 'best[subtitle]/best',
     'default_player': 'mpv',
     'players': {
         'mpv': {
@@ -77,7 +77,11 @@ DEFAULT_CONFIG = {
         'time_format': '%X'
     },
     'download_auto_retry': 300,
-    'use_ffmpeg': False
+    'ffmpeg': {
+        'executable': 'ffmpeg',
+        'hls_download': False,
+        'submerge': True,
+    }
 }
 
 CONFIG = DEFAULT_CONFIG
@@ -106,7 +110,7 @@ HENTAISTREAM = SITE_URLS.get('hentaistream')
 TWIST = SITE_URLS.get('twist')
 ZORO = SITE_URLS.get('zoro')
 
-QUALITY = CONFIG.get('preferred_quality')
+QUALITY = CONFIG.get('quality_string')
 
 DEFAULT_PLAYER = CONFIG.get('default_player')
 PLAYERS = CONFIG.get('players')
@@ -120,7 +124,12 @@ SESSION_FILE = CONFIG.get('session_file')
 DEFAULT_PROVIDER = CONFIG.get('default_provider')
 
 AUTO_RETRY = CONFIG.get('download_auto_retry', 300) / 1000
-USE_FFMPEG = CONFIG.get('use_ffmpeg', False)
+
+FFMPEG_SETTINGS = CONFIG.get('ffmpeg', {})
+
+FFMPEG_EXECUTABLE = FFMPEG_SETTINGS.get('executable', 'ffmpeg')
+FFMPEG_HLS = FFMPEG_SETTINGS.get('hls_download', False)
+FFMPEG_SUBMERGE = FFMPEG_SETTINGS.get('submerge', True)
 
 QBITTORENT_CONFIG = CONFIG.get('qbittorrent', {})
 
