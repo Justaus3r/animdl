@@ -6,6 +6,14 @@
 <p align="center"><a href="https://github.com/justfoolingaround/animdl"><img src="https://forthebadge.com/images/badges/makes-people-smile.svg" height="30px"><img src="https://forthebadge.com/images/badges/made-with-python.svg" height="30px"><img src="https://forthebadge.com/images/badges/powered-by-black-magic.svg" height="30px"></a></p>
 </h1>
 
+<p align="center">
+<a href="https://discord.gg/gaX2Snst2j">
+<code>
+<img src="https://img.shields.io/discord/925000668824080474.svg?color=%237289DA&label=Support%20Server&logo=Discord&style=for-the-badge" height="30px">
+</code>
+</a></p>
+
+
 ## Installation
 
 Installation of [**animdl**](https://www.github.com/justfoolingaround/animdl) can be done using:
