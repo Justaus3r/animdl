@@ -70,32 +70,14 @@ def quality_prompt(log_level, logger, stream_list):
     default=QUALITY,
 )
 @click.option(
-    "--mpv",
-    is_flag=True,
-    default=DEFAULT_PLAYER == "mpv",
-    flag_value=True,
-    help="Force mpv (defaults to True) for streaming.",
-)
-@click.option(
-    "--vlc",
-    is_flag=True,
-    default=DEFAULT_PLAYER == "vlc",
-    flag_value=True,
-    help="Force vlc for streaming.",
-)
-@click.option(
-    "--iina",
-    is_flag=True,
-    default=DEFAULT_PLAYER == "iina",
-    flag_value=True,
-    help="Force iina for streaming.",
-)
-@click.option(
-    "--celluloid",
-    is_flag=True,
-    default=DEFAULT_PLAYER == "celluloid",
-    flag_value=True,
-    help="Force celluloid for streaming.",
+    "-p",
+    "--player",
+    help="Select which player to play from.",
+    required=False,
+    default=DEFAULT_PLAYER,
+    show_default=True,
+    show_choices=True,
+    type=click.Choice(('mpv', 'vlc', 'iina', 'celluloid', 'ffplay', 'android'), case_sensitive=False)
 )
 @click.option(
     "--auto",
@@ -125,10 +107,7 @@ def animdl_stream(
     query,
     player_opts,
     quality,
-    mpv,
-    vlc,
-    iina,
-    celluloid,
+    player,
     auto,
     index,
     log_level,
@@ -143,10 +122,7 @@ def animdl_stream(
     logger = logging.getLogger("streamer")
     streamer = helpers.handle_streamer(
         click.parser.split_arg_string(player_opts or "") or [],
-        vlc=vlc,
-        mpv=mpv,
-        iina=iina,
-        celluloid=celluloid,
+        **{player: True}
     )
 
     if streamer is False:

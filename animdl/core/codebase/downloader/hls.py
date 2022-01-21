@@ -125,37 +125,30 @@ def hls_yield(session, q_dicts, quality_string, auto_retry=2, *, continuation_in
     stream_iter = iter(
         (yarl.URL(_) for _ in internal_streams[continuation_index - 1 :])
     )
-    decryptor = get_decrypter(
-        encryption_data,
-        iv=encryption_iv or b"",
-        default_iv_generator=def_iv(continuation_index),
-    )
+    if encryption_state:
+        decryptor = get_decrypter(
+            encryption_data,
+            iv=encryption_iv or None,
+            default_iv_generator=def_iv(continuation_index),
+        )
 
     for current_count, stream in enumerate(stream_iter, continuation_index):
 
         if not stream.is_absolute():
             stream = base_uri.join(stream)
 
-        sucessful_yield = False
+        ts_response = session.get(
+            stream.human_repr(), headers=origin_m3u8.get("headers", {})
+        )
+        
+        ts_response.raise_for_status()
+        ts_data = ts_response.content
 
-        while not sucessful_yield:
-            try:
-                ts_response = session.get(
-                    stream.human_repr(), headers=origin_m3u8.get("headers", {})
-                )
-                ts_response.raise_for_status()
-                ts_data = ts_response.content
+        if encryption_state:
+            ts_data = decryptor(ts_data)
 
-                if encryption_state:
-                    ts_data = decryptor(ts_data)
-
-                yield {
-                    "bytes": ts_data,
-                    "total": total_streams,
-                    "current": current_count,
-                }
-
-                sucessful_yield = True
-            except httpx.RequestError as e:
-                logger.error('HLS downloading error due to "{!r}", retrying.'.format(e))
-                time.sleep(auto_retry)
+        yield {
+            "bytes": ts_data,
+            "total": total_streams,
+            "current": current_count,
+        }

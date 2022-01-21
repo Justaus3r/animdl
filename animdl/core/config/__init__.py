@@ -69,6 +69,14 @@ DEFAULT_CONFIG = {
             "executable": "celluloid",
             "opts": [],
         },
+        "ffplay": {
+            "executable": "ffplay",
+            "opts": [],
+        },
+        "android": {
+            "executable": "am",
+            "opts": [],
+        },
     },
     "qbittorrent": {
         "endpoint_url": "http://127.0.0.1:8080",

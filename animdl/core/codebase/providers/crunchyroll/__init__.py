@@ -1,13 +1,12 @@
 import json
-import regex
 from collections import defaultdict
 from functools import partial
 
 import lxml.html as htmlparser
+import regex
 
 from ....config import CRUNCHYROLL
 from ...helper import construct_site_based_regex
-from .geobypass import geobypass_response
 
 REGEX = construct_site_based_regex(CRUNCHYROLL, extra_regex=r"/([^?/&]+)")
 
@@ -20,10 +19,10 @@ def get_subtitle(subtitles, lang="enUS"):
             yield sub.get("url")
 
 
-def get_stream_urls(episode_data):
+def get_stream_urls(session, episode_data):
     for episode_page, title in episode_data:
         json_content = json.loads(
-            CONTENT_METADATA.search(geobypass_response(episode_page).text).group(1)
+            CONTENT_METADATA.search(session.get(episode_page).text).group(1)
         )
         metadata = json_content.get("metadata")
 
@@ -73,10 +72,13 @@ def fetcher(session, url, check, match):
     slug = match.group(1)
     url = CRUNCHYROLL + slug
 
-    for episode_number, episode_data in sorted(
-        group_content(slug, htmlparser.fromstring(geobypass_response(url).text)).items()
-    ):
+    episode_urls = sorted(group_content(slug, htmlparser.fromstring(session.get(url).text)).items())
+
+    if not episode_urls:
+        us_catalouge_session = session.get('https://raw.githubusercontent.com/justfoolingaround/animdl-provider-benchmarks/master/api/raw').text
+        session.cookies.update({'session_id': us_catalouge_session})
+        episode_urls = sorted(group_content(slug, htmlparser.fromstring(session.get(url).text)).items())
+
+    for episode_number, episode_data in episode_urls:
         if check(episode_number):
-            yield partial(
-                (lambda e: [*get_stream_urls(e)]), episode_data
-            ), episode_number
+            yield partial(lambda e: list(get_stream_urls(session, e)), episode_data), episode_number
