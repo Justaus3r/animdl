@@ -1,29 +1,13 @@
 import regex
-import logging
 
-SKEY_RE = regex.compile(r"skey = '(?P<skey>[^']+)';")
+EMBED_URL_REGEX = regex.compile(r"(.+?/)(?:embed|e)/([^?/#&])")
 
 
 def extract(session, url, **opts):
-    headers = opts.pop("headers", {})
-
-    info_ajax = "{}/info/{}".format(
-        *regex.search("(.+)/(?:embed|e)/(.+)", url).group(1, 2)
-    )
-    logger = logging.getLogger("vidstream-extractor")
-
-    vidstream_content = session.get(url, headers=headers)
-    skey_match = SKEY_RE.search(vidstream_content.text)
-    if not skey_match:
-        if vidstream_content.ok:
-            logger.warning(
-                'Could not find session key from VidStream; associated url: "%s" (Include this in your GitHub issue!).'
-                % url
-            )
-        return []
+    host, slug = EMBED_URL_REGEX.search(url).group(1, 2)
 
     vidstream_info = session.get(
-        info_ajax, params={"skey": skey_match.group("skey")}, headers={"referer": url}
+        "{}info/{}".format(host, slug), headers={"referer": host}
     )
     return [
         {"stream_url": content.get("file", ""), "headers": {"referer": url}}

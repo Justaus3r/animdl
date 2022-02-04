@@ -20,15 +20,7 @@ Installation of [**animdl**](https://www.github.com/justfoolingaround/animdl) ca
 
 ```sh
 
-python -m pip install git+https://www.github.com/justfoolingaround/animdl
-
-```
-
-Note that you need to have git installed, else, you would need to download the repository and then, use:
-
-```sh
-
-python -m pip install .
+python -m pip install animdl
 
 ```
 
