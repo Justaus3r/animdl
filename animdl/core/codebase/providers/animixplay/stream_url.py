@@ -47,10 +47,10 @@ def extract_from_url(embed_url):
 
 
 def extract_from_embed(session, embed_url):
-    embed_page = session.get(embed_url, allow_redirects=True)
+    embed_page = session.get(embed_url)
 
     while embed_page.status_code == 429:
-        embed_page = session.get(embed_url, allow_redirects=True)
+        embed_page = session.get(embed_url)
         time.sleep(2.5)
 
     if embed_page.status_code == 403:

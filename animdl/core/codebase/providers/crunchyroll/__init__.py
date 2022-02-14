@@ -81,9 +81,12 @@ def fetcher(session, url, check, match):
     )
 
     if not episode_urls:
-        us_catalouge_session = session.get(
-            "https://raw.githubusercontent.com/justfoolingaround/animdl-provider-benchmarks/master/api/raw"
-        ).text
+        us_catalouge_session = (
+            session.get("https://cr-unblocker.us.to/start_session")
+            .json()
+            .get("data", {})
+            .get("session_id")
+        )
         session.cookies.update({"session_id": us_catalouge_session})
         episode_urls = sorted(
             group_content(slug, htmlparser.fromstring(session.get(url).text)).items()

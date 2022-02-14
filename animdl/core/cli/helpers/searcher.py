@@ -140,7 +140,7 @@ def search_twist(session, query):
     )
     animes = content.json()
 
-    for _, anime in search(
+    for anime in search(
         query, animes, processor=lambda r: r.get("title") or r.get("alt_title")
     ):
         yield {
@@ -156,7 +156,7 @@ def search_crunchyroll(session, query):
         ).text.strip("*/\n -secur")
     )
 
-    for _, anime in search(
+    for anime in search(
         query, content.get("data", []), processor=lambda r: r.get("name")
     ):
         yield {
@@ -177,8 +177,10 @@ def search_nyaasi(session, query):
 
 def search_tenshi(session, query, *, domain=TENSHI):
     uwu.bypass_ddos_guard(session, domain)
-    tenshi_page = htmlparser.fromstring(session.get(domain + "anime", params={"q": query}).text)
-    
+    tenshi_page = htmlparser.fromstring(
+        session.get(domain + "anime", params={"q": query}).text
+    )
+
     for result in tenshi_page.cssselect(".list > li > a"):
         yield {"name": result.get("title"), "anime_url": result.get("href")}
 
@@ -192,12 +194,16 @@ def search_zoro(session, query):
             "anime_url": ZORO + result.get("href")[1:-11],
         }
 
+
 def search_h_ntai_stream(session, query):
-    for result in htmlparser.fromstring(session.get(HENTAISTREAM, params={'s': query}).text).cssselect('article > .bsx > a'):
+    for result in htmlparser.fromstring(
+        session.get(HENTAISTREAM, params={"s": query}).text
+    ).cssselect("article > .bsx > a"):
         yield {
             "name": result.get("title"),
             "anime_url": result.get("href"),
         }
+
 
 def search_haho(session, query):
     yield from search_tenshi(session, query, domain=HAHO)

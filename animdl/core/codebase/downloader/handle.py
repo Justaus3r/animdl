@@ -120,9 +120,7 @@ def standard_download(
             if ranges:
                 temporary_headers.update({"Ranges": "bytes={}-".format(downloaded)})
             try:
-                with session.stream(
-                    "GET", url, allow_redirects=True, headers=headers
-                ) as http_stream:
+                with session.stream("GET", url, headers=headers) as http_stream:
                     http_stream.raise_for_status()
 
                     for chunks in http_stream.iter_bytes():
